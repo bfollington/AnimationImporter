@@ -37,7 +37,7 @@ namespace AnimationImporter
 		public static void ImportAnimationsMenu()
 		{
 			EditorWindow.GetWindow(typeof(AnimationImporterWindow), false, "Anim Importer");
-        }
+		}
 
 		// ================================================================================
 		//  unity methods
@@ -45,7 +45,7 @@ namespace AnimationImporter
 
 		public void OnEnable()
 		{
-			importer.LoadUserConfig();
+			importer.LoadOrCreateUserConfig();
 		}
 
 		public void OnGUI()
@@ -85,11 +85,27 @@ namespace AnimationImporter
 
 		private void ShowUserConfig()
 		{
+			if (importer == null || importer.sharedData == null)
+			{
+				return;
+			}
+
 			ShowHeadline("Config");
 
 			/*
 				Aseprite Application
 			*/
+
+			// Show a button for allowing users to upgrade their config from Preferences to a saved asset
+			if (importer.sharedData.UserHasOldPreferences())
+			{
+				if (GUILayout.Button("Copy Config From Old Preferences"))
+				{
+					importer.sharedData.CopyFromPreferences();
+				}
+
+				EditorGUILayout.Space();
+			}
 
 			GUILayout.BeginHorizontal();
 			GUILayout.Label("Aseprite Application Path");
@@ -114,7 +130,7 @@ namespace AnimationImporter
 			}
 			GUILayout.EndHorizontal();
 
-			GUILayout.BeginHorizontal();			
+			GUILayout.BeginHorizontal();
 			importer.asepritePath = GUILayout.TextField(newPath, GUILayout.MaxWidth(300f));
 
 			GUILayout.EndHorizontal();
@@ -125,29 +141,29 @@ namespace AnimationImporter
 				sprite values
 			*/
 
-			importer.targetObjectType = (AnimationTargetObjectType)EditorGUILayout.EnumPopup("Target Object", importer.targetObjectType);
+			importer.sharedData.targetObjectType = (AnimationTargetObjectType)EditorGUILayout.EnumPopup("Target Object", importer.sharedData.targetObjectType);
 
-			importer.spriteAlignment = (SpriteAlignment)EditorGUILayout.EnumPopup("Sprite Alignment", importer.spriteAlignment);
+			importer.sharedData.spriteAlignment = (SpriteAlignment)EditorGUILayout.EnumPopup("Sprite Alignment", importer.sharedData.spriteAlignment);
 
-			if (importer.spriteAlignment == SpriteAlignment.Custom)
+			if (importer.sharedData.spriteAlignment == SpriteAlignment.Custom)
 			{
-				importer.spriteAlignmentCustomX = EditorGUILayout.Slider("x", importer.spriteAlignmentCustomX, 0, 1f);
-				importer.spriteAlignmentCustomY = EditorGUILayout.Slider("y", importer.spriteAlignmentCustomY, 0, 1f);
+				importer.sharedData.spriteAlignmentCustomX = EditorGUILayout.Slider("x", importer.sharedData.spriteAlignmentCustomX, 0, 1f);
+				importer.sharedData.spriteAlignmentCustomY = EditorGUILayout.Slider("y", importer.sharedData.spriteAlignmentCustomY, 0, 1f);
 			}
 
-			importer.spritePixelsPerUnit = EditorGUILayout.FloatField("Sprite Pixels per Unit", importer.spritePixelsPerUnit);
+			importer.sharedData.spritePixelsPerUnit = EditorGUILayout.FloatField("Sprite Pixels per Unit", importer.sharedData.spritePixelsPerUnit);
 
 			EditorGUILayout.BeginHorizontal();
-			importer.saveSpritesToSubfolder = EditorGUILayout.Toggle("Sprites to Subfolder", importer.saveSpritesToSubfolder);
+			importer.sharedData.saveSpritesToSubfolder = EditorGUILayout.Toggle("Sprites to Subfolder", importer.sharedData.saveSpritesToSubfolder);
 
-			importer.saveAnimationsToSubfolder = EditorGUILayout.Toggle("Animations to Subfolder", importer.saveAnimationsToSubfolder);
+			importer.sharedData.saveAnimationsToSubfolder = EditorGUILayout.Toggle("Animations to Subfolder", importer.sharedData.saveAnimationsToSubfolder);
 			EditorGUILayout.EndHorizontal();
 
 			GUILayout.Space(25f);
 
 			ShowHeadline("Automatic Import");
 			EditorGUILayout.BeginHorizontal();
-			importer.automaticImporting = EditorGUILayout.Toggle("Automatic Import", importer.automaticImporting);
+			importer.sharedData.automaticImporting = EditorGUILayout.Toggle("Automatic Import", importer.sharedData.automaticImporting);
 			EditorGUILayout.LabelField("Use at your own risk!", EditorStyles.boldLabel);
 			EditorGUILayout.EndHorizontal();
 			EditorGUILayout.LabelField("Looks for existing Controller with same name. Uses current import setting.");
@@ -159,15 +175,15 @@ namespace AnimationImporter
 			GUILayout.Space(25f);
 			ShowHeadline("Non-looping Animations");
 
-			for (int i = 0; i < importer.animationNamesThatDoNotLoop.Count; i++)
+			for (int i = 0; i < importer.sharedData.animationNamesThatDoNotLoop.Count; i++)
 			{
 				GUILayout.BeginHorizontal();
-				GUILayout.Label(importer.animationNamesThatDoNotLoop[i]);
-				bool doDelete = GUILayout.Button("Delete");			
+				GUILayout.Label(importer.sharedData.animationNamesThatDoNotLoop[i]);
+				bool doDelete = GUILayout.Button("Delete");
 				GUILayout.EndHorizontal();
 				if (doDelete)
 				{
-					importer.RemoveAnimationThatDoesNotLoop(i);
+					importer.sharedData.RemoveAnimationThatDoesNotLoop(i);
 					break;
 				}
 			}
@@ -179,12 +195,19 @@ namespace AnimationImporter
 			_nonLoopingAnimationEnterValue = EditorGUILayout.TextField(_nonLoopingAnimationEnterValue);
 			if (GUILayout.Button("Enter"))
 			{
-				if (importer.AddAnimationThatDoesNotLoop(_nonLoopingAnimationEnterValue))
+				if (importer.sharedData.AddAnimationThatDoesNotLoop(_nonLoopingAnimationEnterValue))
 				{
 					_nonLoopingAnimationEnterValue = "";
 				}
 			}
 			GUILayout.EndHorizontal();
+
+			EditorGUILayout.LabelField("Enter Part of the Animation Name or a Regex Expression.");
+
+			if (GUI.changed)
+			{
+				EditorUtility.SetDirty(importer.sharedData);
+			}
 		}
 
 		private void ShowAnimationsGUI()
@@ -194,8 +217,19 @@ namespace AnimationImporter
 			DefaultAsset droppedAsset = ShowDropButton<DefaultAsset>(importer.canImportAnimations);
 			if (droppedAsset != null)
 			{
-				importer.CreateAnimationsForAssetFile(droppedAsset);
-				AssetDatabase.Refresh();
+				EditorUtility.DisplayProgressBar("Import Animations", "Importing...", 0);
+				try
+				{
+					importer.CreateAnimationsForAssetFile(droppedAsset);
+					AssetDatabase.Refresh();
+				}
+				catch (Exception error)
+				{
+					Debug.LogWarning(error.ToString());
+					throw;
+				}
+
+				EditorUtility.ClearProgressBar();
 			}
 		}
 
@@ -206,14 +240,25 @@ namespace AnimationImporter
 			DefaultAsset droppedAsset = ShowDropButton<DefaultAsset>(importer.canImportAnimations);
 			if (droppedAsset != null)
 			{
-				var animationInfo = importer.CreateAnimationsForAssetFile(droppedAsset);
-
-				if (animationInfo != null)
+				EditorUtility.DisplayProgressBar("Import Animator Controller", "Importing...", 0);
+				try
 				{
-					importer.CreateAnimatorController(animationInfo);
+					var animationInfo = importer.CreateAnimationsForAssetFile(droppedAsset);
+
+					if (animationInfo != null)
+					{
+						importer.CreateAnimatorController(animationInfo);
+					}
+
+					AssetDatabase.Refresh();
+				}
+				catch (Exception error)
+				{
+					Debug.LogWarning(error.ToString());
+					throw;
 				}
 
-				AssetDatabase.Refresh();
+				EditorUtility.ClearProgressBar();
 			}
 		}
 
@@ -226,14 +271,25 @@ namespace AnimationImporter
 			DefaultAsset droppedAsset = ShowDropButton<DefaultAsset>(importer.canImportAnimationsForOverrideController);
 			if (droppedAsset != null)
 			{
-				var animationInfo = importer.CreateAnimationsForAssetFile(droppedAsset);
-
-				if (animationInfo != null)
+				EditorUtility.DisplayProgressBar("Import Animator Override Controller", "Importing...", 0);
+				try
 				{
-					importer.CreateAnimatorOverrideController(animationInfo);
+					var animationInfo = importer.CreateAnimationsForAssetFile(droppedAsset);
+
+					if (animationInfo != null)
+					{
+						importer.CreateAnimatorOverrideController(animationInfo);
+					}
+
+					AssetDatabase.Refresh();
+				}
+				catch (Exception error)
+				{
+					Debug.LogWarning(error.ToString());
+					throw;
 				}
 
-				AssetDatabase.Refresh();
+				EditorUtility.ClearProgressBar();
 			}
 		}
 
