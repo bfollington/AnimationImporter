@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -237,6 +237,7 @@ namespace AnimationImporter
 		//  save and load user values
 		// --------------------------------------------------------------------------------
 
+
 		public void LoadUserConfig()
 		{
 			if (EditorPrefs.HasKey(PREFS_PREFIX + "asepritePath"))
@@ -409,6 +410,13 @@ namespace AnimationImporter
 			return CreateAnimationsForAssetFile(AssetDatabase.GetAssetPath(droppedAsset));
 		}
 
+	    public void OpenAssetFileInAseprite(DefaultAsset asset)
+	    {
+	        var assetPath = AssetDatabase.GetAssetPath(asset);
+	        var name = Path.GetFileNameWithoutExtension(assetPath);
+	        AsepriteImporter.OpenFileInAseprite(_asepritePath, GetBasePath(assetPath), name);
+	    }
+
 		public ImportedAnimationInfo CreateAnimationsForAssetFile(string assetPath)
 		{
 			if (!IsValidAsset(assetPath))
@@ -431,7 +439,7 @@ namespace AnimationImporter
 			return null;
 		}
 
-		public void CreateAnimatorController(ImportedAnimationInfo animations)
+		public AnimatorController CreateAnimatorController(ImportedAnimationInfo animations)
 		{
 			AnimatorController controller;
 
@@ -465,6 +473,8 @@ namespace AnimationImporter
 
 			EditorUtility.SetDirty(controller);
 			AssetDatabase.SaveAssets();
+
+		    return controller;
 		}
 
 		public void CreateAnimatorOverrideController(ImportedAnimationInfo animations, bool useExistingBaseController = false)
@@ -666,7 +676,7 @@ namespace AnimationImporter
 			return path.Replace(lastPart, "");
 		}
 
-		private string GetImageAssetFilename(string basePath, string name)
+		public string GetImageAssetFilename(string basePath, string name)
 		{
 			if (saveSpritesToSubfolder)
 				basePath += "/Sprites";

@@ -1,7 +1,7 @@
-/* JSONObject.cs -- Simple C# JSON parser
+ï»¿/* JSONObject.cs -- Simple C# JSON parser
   version 1.4 - March 17, 2014
 
-  ## changed by Stephan Hövelbrinks (stephan.hoevelbrinks@craftinglegends.com)
+  ## changed by Stephan Hï¿½velbrinks (stephan.hoevelbrinks@craftinglegends.com)
      -- added InvariantCulture to string conversion
 	 -- removed RegularExpressions System.Text.RegularExpressions from WinRT version
 

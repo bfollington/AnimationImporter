@@ -69,6 +69,23 @@ namespace AnimationImporter
 			return success;
 		}
 
+	    public static void OpenFileInAseprite(string asepritePath, string assetBasePath, string name)
+	    {
+	        char delimiter = '\"';
+	        string parameters = delimiter + name + ".ase" + delimiter;
+	        string workingDirectory = Application.dataPath.Replace("Assets", "") + assetBasePath;
+
+	        System.Diagnostics.ProcessStartInfo start = new System.Diagnostics.ProcessStartInfo();
+	        start.Arguments = parameters;
+	        start.FileName = asepritePath;
+	        start.WindowStyle = System.Diagnostics.ProcessWindowStyle.Normal;
+	        start.WorkingDirectory = workingDirectory;
+
+	        // Run the external process & wait for it to finish
+	        var proc = System.Diagnostics.Process.Start(start);
+	        
+	    }
+
 		private static int CallAsepriteCLI(string asepritePath, string path, string buildOptions)
 		{
 			string workingDirectory = Application.dataPath.Replace("Assets", "") + path;
